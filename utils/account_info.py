@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-Alpaca_endpoint = os.getenv("ALPACA_ENDPOINT")
+Alpaca_endpoint = os.getenv("BASE_URL")
 Alpaca_key = os.getenv("ALPACA_KEY")
 Alpaca_secret = os.getenv("ALPACA_SECRET")
 
