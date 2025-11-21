@@ -1,8 +1,10 @@
 from strat_base import StrategyBase
+from order_manager import OrderManager
 
 class OrderBookImbalanceStrategy(StrategyBase):
-    def __init__(self): # start_date, end_date, symbols, cash
+    def __init__(self, order_manager: OrderManager): # start_date, end_date, symbols, cash
         super().__init__()
+        self.order_manager = order_manager
         self.thresold_buy = 0.45
         self.thresold_sell = 1 - self.thresold_buy
 
@@ -27,5 +29,5 @@ class OrderBookImbalanceStrategy(StrategyBase):
             pass
         else:
             # Close positions
-            pass
+            self.order_manager.close_position(self.symbol, data['best_ask'], data['best_bid'])
 
