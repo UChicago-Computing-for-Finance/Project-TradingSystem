@@ -209,9 +209,11 @@ class MarketDataStreamSecond:
                         print(f"msg: {msg}", flush=True)
                     
                     if self.order_book is not None:
-                        loop = asyncio.get_event_loop()
-                        loop.run_in_executor(None, self.order_book.update, msg)
-                        # self.order_book.update(msg)
+
+                        # loop = asyncio.get_event_loop()
+                        # loop.run_in_executor(None, self.order_book.update, msg)
+
+                        self.order_book.update(msg) # TODO: potential issue here
 
                         if self.verbose:
                             self.order_book.print_orderbook()
