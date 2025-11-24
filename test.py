@@ -16,17 +16,17 @@
 # ------------------------------------------------------------
 # order book stream
 
-from utils.order_book import OrderBook
-from utils.market_data import MarketDataStream
+# from utils.order_book import OrderBook
+# from utils.market_data import MarketDataStream
 
-# Create order book for BTC/USD
-order_book = OrderBook(symbol="BTC/USD", max_levels=10)
+# # Create order book for BTC/USD
+# order_book = OrderBook(symbol="BTC/USD", max_levels=10, trim_frequency=10)
 
-# Create market data stream and pass the order book
-stream = MarketDataStream(order_book=order_book)
+# # Create market data stream and pass the order book
+# stream = MarketDataStream(order_book=order_book, verbose=True)
 
-# Start streaming (this will update the order book automatically)
-stream.start()
+# # Start streaming (this will update the order book automatically)
+# stream.start()
 
 
 # ------------------------------------------------------------
@@ -35,3 +35,19 @@ stream.start()
 # from order_manager import OrderManager
 # order_manager = OrderManager()
 # order_manager.buy(symbol="BTC/USD", limit_price=100000, quantity=0.01)
+
+
+# ------------------------------------------------------------
+# order book SECOND
+
+from utils.order_book import OrderBook
+from utils.market_data_second import MarketDataStreamSecond
+
+# Create order book for BTC/USD
+order_book = OrderBook(symbol="BTC/USD", max_levels=10, trim_frequency=10)
+
+# Create market data stream and pass the order book
+stream = MarketDataStreamSecond(order_book=order_book, verbose=True)
+
+# Start streaming (this will update the order book automatically)
+stream.start()
