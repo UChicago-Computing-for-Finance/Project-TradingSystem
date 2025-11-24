@@ -8,6 +8,7 @@ class OrderBookImbalanceStrategy(StrategyBase):
         self.order_manager = order_manager
         self.thresold_buy = 0.45
         self.thresold_sell = 1 - self.thresold_buy
+        self.symbol = "BTC/USD"
 
     def initialize(self) -> None:
         pass
