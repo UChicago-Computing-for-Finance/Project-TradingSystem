@@ -335,15 +335,15 @@ class OrderBook:
         else:
             print(f"================================================")
 
-        for ask in asks:
-            print(f"Ask: {ask}")
+        # for ask in asks:
+        #     print(f"Ask: {ask}")
         print(f"Best Ask: {best_ask}, {best_ask_size}")
         print("--------------------------------")
         print(f"Spread: {spread} ,{mid_price}")
         print("--------------------------------")
         print(f"Best Bid: {best_bid}, {best_bid_size}")
-        for bid in bids:
-            print(f"Bid: {bid}")
+        # for bid in bids:
+        #     print(f"Bid: {bid}")
         print(f"================================================")
         print("\n")
     

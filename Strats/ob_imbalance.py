@@ -1,5 +1,6 @@
 from strat_base import StrategyBase
 from order_manager import OrderManager
+import pandas as pd
 
 class OrderBookImbalanceStrategy(StrategyBase):
     def __init__(self, order_manager: OrderManager): # start_date, end_date, symbols, cash
