@@ -59,10 +59,6 @@ class MarketDataStreamSecond:
                 }
                 await websocket.send(json.dumps(auth_message))
                 
-                if self.verbose:
-                    print(f"Authenticated to Alpaca WebSocket", flush=True)
-                
-                # Start message processing task
                 message_task = asyncio.create_task(self.process_messages(websocket))
                 
                 # Start the periodic subscription loop
@@ -87,7 +83,7 @@ class MarketDataStreamSecond:
         try:
             async for message in websocket:
                 if self.is_subscribed:
-                    snapshot = await self.wait_for_snapshot(message)
+                    snapshot = await self.process_snapshot(message)
                     if snapshot and self.snapshot_event and not self.snapshot_event.is_set():
                         self.snapshot_event.set()
         except asyncio.CancelledError:
@@ -98,9 +94,19 @@ class MarketDataStreamSecond:
     
     async def subscription_loop(self, websocket):
         """
-        Main loop that subscribes/unsubscribes every second to get snapshots.
+        Main loop that subscribes/unsubscribes
         """
         self.running = True
+
+        unsubscribe_message = {
+            "action": "unsubscribe",
+            "orderbooks": [self.symbol]
+        }
+
+        subscribe_message = {
+            "action": "subscribe",
+            "orderbooks": [self.symbol] # BTC/USD
+        }
         
         while self.running:
             try:
@@ -109,153 +115,97 @@ class MarketDataStreamSecond:
                 self.is_subscribed = True  # Mark as subscribed
                 self.duplicate_detected = False  # Track if duplicate was detected
 
-                
-                # Subscribe to get initial snapshot
-                subscribe_message = {
-                    "action": "subscribe",
-                    "orderbooks": [self.symbol] # BTC/USD
-                }
+                # SUBSCRIBE
                 await websocket.send(json.dumps(subscribe_message))
                 
-                if self.verbose:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Subscribed to {self.symbol}", flush=True)
-                
-                # Wait for snapshot with 1.5 second total timeout (allowing retries)
                 start_time = asyncio.get_event_loop().time()
-                snapshot_received = False
-                max_wait_time = 1.5
-                
-                while (asyncio.get_event_loop().time() - start_time) < max_wait_time:
-                    # Reset duplicate flag for this iteration
-                    self.duplicate_detected = False
-                    self.snapshot_event.clear()  # Clear event for new wait
+                try:
+                    await asyncio.wait_for(self.snapshot_event.wait(), timeout=1.5)
+
+                    if self.duplicate_detected:
+                        # UN-SUBSCRIBE
+                        self.is_subscribed = False
+                        await websocket.send(json.dumps(unsubscribe_message))
+
+                        await asyncio.sleep(0.5)
+                        continue
+
                     
-                    try:
-                        remaining_time = max_wait_time - (asyncio.get_event_loop().time() - start_time)
-                        if remaining_time <= 0:
-                            break
-                            
-                        await asyncio.wait_for(self.snapshot_event.wait(), timeout=remaining_time)
-                        
-                        # If duplicate was detected, wait 0.2s and retry
-                        if self.duplicate_detected:
-                            if self.verbose:
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] Duplicate detected, waiting 0.2s to retry", flush=True)
-                            await asyncio.sleep(0.2)
-                            continue  # Retry waiting for snapshot
-                        
-                        # Valid snapshot received
-                        snapshot_received = True
-                        if self.verbose:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] Snapshot received", flush=True)
-                        break
-                        
-                    except asyncio.TimeoutError:
-                        # No snapshot arrived within remaining time
-                        break
+                    # UN-SUBSCRIBE
+                    self.is_subscribed = False
+                    await websocket.send(json.dumps(unsubscribe_message))
+                    
+
+                    elapsed = asyncio.get_event_loop().time() - start_time
+                    remaining_time = max(0, 1.5 - elapsed)
+                    if remaining_time > 0:
+                        await asyncio.sleep(remaining_time)
+                    
+                    continue  # Restart loop
+
+                except asyncio.TimeoutError:
+
+                    # unsubscribe
+                    self.is_subscribed = False
+                    await websocket.send(json.dumps(unsubscribe_message))
+                    continue
                 
-                if not snapshot_received:
-                    if self.verbose:
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] Timeout: No snapshot received, skipping", flush=True)
-                
-                # Mark as unsubscribed BEFORE unsubscribing to prevent race conditions
+            except asyncio.CancelledError:
+                # Handle cancellation gracefully
                 self.is_subscribed = False
-                
-                # Unsubscribe
-                unsubscribe_message = {
-                    "action": "unsubscribe",
-                    "orderbooks": [self.symbol]
-                }
-                await websocket.send(json.dumps(unsubscribe_message))
-                
-                if self.verbose:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Unsubscribed", flush=True)
-                
-                # Wait until next second boundary
-                elapsed = asyncio.get_event_loop().time() - start_time
-                sleep_time = max(0, 1 - elapsed)
-                if sleep_time > 0:
-                    await asyncio.sleep(sleep_time)
-                
+                self.running = False
+                raise
             except Exception as e:
-                self.is_subscribed = False  # Mark as not subscribed
+                self.is_subscribed = False
                 if self.verbose:
                     print(f"Error in subscription loop: {e}", file=sys.stderr, flush=True)
-                # Wait a bit before retrying
                 await asyncio.sleep(0.1)
     
-    async def wait_for_snapshot(self, message: str) -> Optional[dict]:
+    async def process_snapshot(self, message: str) -> Optional[dict]:
         """
-        Process message and return snapshot if it has r: true flag.
-        
-        Args:
-            message: Raw WebSocket message string
-            
-        Returns:
-            Snapshot message dict if found, None otherwise
+        Process raw WebSocket message and return snapshot if found.
         """
         try:
             data = json.loads(message)
             
             # Handle list of messages
-            if isinstance(data, list):
-                for msg in data:
-                    snapshot = self._check_for_snapshot(msg)
-                    if snapshot:
-                        return snapshot
-            else:
-                return self._check_for_snapshot(data)
-                
+            messages = data if isinstance(data, list) else [data]
+            
+            for msg in messages:
+                # Check if it's an orderbook message with r: true
+                if (isinstance(msg, dict) and 
+                    msg.get('T') == 'o' and 
+                    msg.get('S') == self.symbol and 
+                    msg.get('r', False)):
+                    
+                    # Check for duplicate
+                    snapshot_timestamp = msg.get('t')
+                    if snapshot_timestamp == self.last_snapshot_timestamp:
+                        if self.verbose:
+                            print(f"[{datetime.now().strftime('%H:%M:%S.%f')}] Duplicate snapshot detected with timestamp {snapshot_timestamp}", flush=True)
+                        self.duplicate_detected = True
+                        if self.snapshot_event:
+                            self.snapshot_event.set()
+                        return None
+                    
+                    # Process valid snapshot
+                    self.last_snapshot_timestamp = snapshot_timestamp
+                    self.snapshot_count += 1
+                    self.message_count += 1
+                    
+                    if self.verbose:
+                        print(f"Received snapshot #{self.snapshot_count} at {msg.get('t', 'N/A')}", flush=True)
+                    
+                    if self.order_book is not None:
+                        loop = asyncio.get_event_loop()
+                        loop.run_in_executor(None, self.order_book.update, msg)
+                        self.order_book.print_orderbook()
+                    
+                    return msg
+                    
         except Exception as e:
             if self.verbose:
                 print(f"Error parsing message: {e}", file=sys.stderr, flush=True)
-        
-        return None
-    
-    def _check_for_snapshot(self, msg: dict) -> Optional[dict]:
-        """
-        Check if message is an orderbook snapshot (r: true) and update orderbook.
-        
-        Args:
-            msg: Message dictionary
-            
-        Returns:
-            Message dict if it's a snapshot, None otherwise
-        """
-        # Check if it's an orderbook message with r: true
-        if (isinstance(msg, dict) and 
-            msg.get('T') == 'o' and 
-            msg.get('S') == self.symbol and 
-            msg.get('r', False)):
-
-            # Check if we've already processed this exact snapshot (by timestamp)
-            snapshot_timestamp = msg.get('t')
-            if snapshot_timestamp == self.last_snapshot_timestamp:
-                if self.verbose:
-                    print(f"Duplicate snapshot detected with timestamp {snapshot_timestamp}", flush=True)
-                # Set flag to indicate duplicate was detected
-                self.duplicate_detected = True
-                # Set event so subscription loop can handle the retry
-                if self.snapshot_event:
-                    self.snapshot_event.set()
-                return None
-
-            self.last_snapshot_timestamp = snapshot_timestamp
-            self.snapshot_count += 1
-            self.message_count += 1
-            
-            if self.verbose:
-                print(f"Received snapshot #{self.snapshot_count} at {msg.get('t', 'N/A')}", flush=True)
-            
-            # Update order book with snapshot
-            if self.order_book is not None:
-                # Run CPU-bound work in executor to avoid blocking event loop
-                loop = asyncio.get_event_loop()
-                loop.run_in_executor(None, self.order_book.update, msg)
-                # loop.run_in_executor(None, self.order_book.print_orderbook)
-                self.order_book.print_orderbook()
-            
-            return msg
         
         return None
     
@@ -266,10 +216,8 @@ class MarketDataStreamSecond:
         except KeyboardInterrupt:
             if self.verbose:
                 print(f"\nProcessed {self.snapshot_count} snapshots", flush=True)
-            self.stop()
+            self.running = False
     
     def stop(self):
         """Stop the WebSocket stream"""
         self.running = False
-        if self.ws:
-            asyncio.create_task(self.ws.close())
