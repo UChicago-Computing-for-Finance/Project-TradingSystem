@@ -41,8 +41,8 @@ class MarketDataStream:
                 if self.order_book is not None and isinstance(msg, dict):
                     self.order_book.update(msg)
                 print(f"Received: {msg}")
-                self.order_book.print_orderbook()
-                self.order_book.record_orderbook()
+                # self.order_book.print_orderbook()
+                # self.order_book.record_orderbook()
         else:
             # Single message (dict)
             # Update order book if provided
@@ -50,8 +50,8 @@ class MarketDataStream:
                 self.order_book.update(data)
 
             print(f"Received: {data}")
-            self.order_book.print_orderbook()
-            self.order_book.record_orderbook()
+            # self.order_book.print_orderbook()
+            # self.order_book.record_orderbook()
             
     def on_message_quotes(self, ws, message):
         """Handle incoming messages from the WebSocket"""
