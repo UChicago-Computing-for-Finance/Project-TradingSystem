@@ -38,6 +38,7 @@ class MarketDataStreamSecond:
         self.snapshot_event = None  # Event to signal snapshot received
         self.is_subscribed = False  # Track subscription state
         self.last_snapshot_timestamp = None  # Track last processed snapshot
+        self.duplicate_detected = False  # Track if duplicate snapshot was detected
         
     async def connect(self):
         """Connect to WebSocket and maintain connection"""
@@ -106,6 +107,7 @@ class MarketDataStreamSecond:
                 # Create event to track snapshot reception
                 self.snapshot_event = asyncio.Event()
                 self.is_subscribed = True  # Mark as subscribed
+                self.duplicate_detected = False  # Track if duplicate was detected
 
                 
                 # Subscribe to get initial snapshot
@@ -118,17 +120,46 @@ class MarketDataStreamSecond:
                 if self.verbose:
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] Subscribed to {self.symbol}", flush=True)
                 
-                # Wait for snapshot with 1 second timeout
+                # Wait for snapshot with 1.5 second total timeout (allowing retries)
                 start_time = asyncio.get_event_loop().time()
-                try:
-                    await asyncio.wait_for(self.snapshot_event.wait(), timeout=1.0)
-                    snapshot_received = True
-                    if self.verbose:
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] Snapshot received", flush=True)
-                except asyncio.TimeoutError:
-                    snapshot_received = False
+                snapshot_received = False
+                max_wait_time = 1.5
+                
+                while (asyncio.get_event_loop().time() - start_time) < max_wait_time:
+                    # Reset duplicate flag for this iteration
+                    self.duplicate_detected = False
+                    self.snapshot_event.clear()  # Clear event for new wait
+                    
+                    try:
+                        remaining_time = max_wait_time - (asyncio.get_event_loop().time() - start_time)
+                        if remaining_time <= 0:
+                            break
+                            
+                        await asyncio.wait_for(self.snapshot_event.wait(), timeout=remaining_time)
+                        
+                        # If duplicate was detected, wait 0.2s and retry
+                        if self.duplicate_detected:
+                            if self.verbose:
+                                print(f"[{datetime.now().strftime('%H:%M:%S')}] Duplicate detected, waiting 0.2s to retry", flush=True)
+                            await asyncio.sleep(0.2)
+                            continue  # Retry waiting for snapshot
+                        
+                        # Valid snapshot received
+                        snapshot_received = True
+                        if self.verbose:
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] Snapshot received", flush=True)
+                        break
+                        
+                    except asyncio.TimeoutError:
+                        # No snapshot arrived within remaining time
+                        break
+                
+                if not snapshot_received:
                     if self.verbose:
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] Timeout: No snapshot received, skipping", flush=True)
+                
+                # Mark as unsubscribed BEFORE unsubscribing to prevent race conditions
+                self.is_subscribed = False
                 
                 # Unsubscribe
                 unsubscribe_message = {
@@ -142,7 +173,7 @@ class MarketDataStreamSecond:
                 
                 # Wait until next second boundary
                 elapsed = asyncio.get_event_loop().time() - start_time
-                sleep_time = max(0, 1.5 - elapsed)
+                sleep_time = max(0, 1 - elapsed)
                 if sleep_time > 0:
                     await asyncio.sleep(sleep_time)
                 
@@ -197,11 +228,16 @@ class MarketDataStreamSecond:
             msg.get('S') == self.symbol and 
             msg.get('r', False)):
 
-            # Skip if we've already processed this exact snapshot (by timestamp)
+            # Check if we've already processed this exact snapshot (by timestamp)
             snapshot_timestamp = msg.get('t')
             if snapshot_timestamp == self.last_snapshot_timestamp:
                 if self.verbose:
-                    print(f"Skipping duplicate snapshot with timestamp {snapshot_timestamp}", flush=True)
+                    print(f"Duplicate snapshot detected with timestamp {snapshot_timestamp}", flush=True)
+                # Set flag to indicate duplicate was detected
+                self.duplicate_detected = True
+                # Set event so subscription loop can handle the retry
+                if self.snapshot_event:
+                    self.snapshot_event.set()
                 return None
 
             self.last_snapshot_timestamp = snapshot_timestamp

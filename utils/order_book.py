@@ -313,6 +313,7 @@ class OrderBook:
         spread = self.get_spread()
         mid_price = self.get_mid_price()
 
+        print("\n")
         if self.last_update_time:
             print(f"===== Last Update: {self.last_update_time} =======")
         else:
