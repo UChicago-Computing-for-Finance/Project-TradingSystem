@@ -1,20 +1,21 @@
 from abc import ABC, abstractmethod
 import pandas as pd
 from datetime import datetime
+from typing import Optional, Any
 
 class StrategyBase(ABC):
 
-    def __init__(self, start_date: datetime, end_date: datetime, symbols: list[str], cash: float):
+    def __init__(self, 
+            symbols: Optional[list[str]] = None, 
+            cash: Optional[float] = None,
+            start_date: Optional[datetime] = None, 
+            end_date: Optional[datetime] = None):
 
         self.start_date = start_date
         self.end_date = end_date
         self.symbols = symbols
         self.cash = cash
-
-        self.parameteres = {
-
-        }
-
+        self.parameteres = {}
 
     @abstractmethod
     def initialize(self) -> None:
@@ -25,5 +26,5 @@ class StrategyBase(ABC):
         pass
 
     @abstractmethod
-    def on_data(self, data: pd.DataFrame) -> None:
+    def on_data(self, data: Any) -> None:
         pass

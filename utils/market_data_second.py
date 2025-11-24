@@ -7,6 +7,7 @@ from utils.order_book import OrderBook
 from typing import Optional
 import sys
 from datetime import datetime
+from utils.events import Event, EventType
 
 load_dotenv()
 
@@ -16,7 +17,11 @@ class MarketDataStreamSecond:
     This simulates second-by-second market data instead of tick-by-tick updates.
     """
     
-    def __init__(self, order_book: Optional[OrderBook] = None, symbol: str = "BTC/USD", verbose: bool = False):
+    def __init__(self, order_book: Optional[OrderBook] = None, 
+                symbol: str = "BTC/USD", 
+                verbose: bool = False,
+                record_orderbook: bool = False,
+                out_q: Optional[asyncio.Queue] = None):
         """
         Initialize the second-based market data stream.
         
@@ -32,13 +37,18 @@ class MarketDataStreamSecond:
         self.ws_url = "wss://stream.data.alpaca.markets/v1beta3/crypto/us"
         self.ws = None
         self.verbose = verbose
+        
         self.message_count = 0
         self.snapshot_count = 0
+
         self.running = False
         self.snapshot_event = None  # Event to signal snapshot received
         self.is_subscribed = False  # Track subscription state
         self.last_snapshot_timestamp = None  # Track last processed snapshot
         self.duplicate_detected = False  # Track if duplicate snapshot was detected
+        self.out_q = out_q
+
+        self.record_orderbook = record_orderbook
         
     async def connect(self):
         """Connect to WebSocket and maintain connection"""
@@ -195,11 +205,28 @@ class MarketDataStreamSecond:
                     
                     if self.verbose:
                         print(f"Received snapshot #{self.snapshot_count} at {msg.get('t', 'N/A')}", flush=True)
+
+                        print(f"msg: {msg}", flush=True)
                     
                     if self.order_book is not None:
                         loop = asyncio.get_event_loop()
                         loop.run_in_executor(None, self.order_book.update, msg)
-                        self.order_book.print_orderbook()
+                        # self.order_book.update(msg)
+
+                        if self.verbose:
+                            self.order_book.print_orderbook()
+
+                        if self.record_orderbook:
+                            print(f"Recording orderbook to file", flush=True)
+                            self.order_book.record_orderbook(filename="order_book.json")
+
+                        if self.out_q is not None:
+                            event = Event(
+                                type=EventType.ORDERBOOK_UPDATE,
+                                payload=self.order_book,
+                                timestamp=msg.get('t')
+                            )
+                            await self.out_q.put(event)
                     
                     return msg
                     
