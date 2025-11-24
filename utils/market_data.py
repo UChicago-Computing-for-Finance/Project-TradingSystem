@@ -1,16 +1,14 @@
-import pandas as pd
 import os
 import json
-import websocket
+import asyncio
+import websockets
 from dotenv import load_dotenv
 from utils.order_book import OrderBook
 from typing import Optional
+import websocket
+import sys
 
 load_dotenv()
-
-Alpaca_endpoint = os.getenv("ALPACA_ENDPOINT")
-Alpaca_key = os.getenv("ALPACA_KEY")
-Alpaca_secret = os.getenv("ALPACA_SECRET")
 
 class MarketDataStream:
     
@@ -22,8 +20,8 @@ class MarketDataStream:
             order_book: Optional OrderBook instance to update with incoming data
         """
         self.ws = None
-        self.api_key = Alpaca_key
-        self.api_secret = Alpaca_secret
+        self.api_key = os.getenv("ALPACA_KEY")
+        self.api_secret = os.getenv("ALPACA_SECRET")
         self.order_book = order_book
 
         # self.ws_url = "wss://stream.data.alpaca.markets/v2/test"
@@ -37,6 +35,7 @@ class MarketDataStream:
         if isinstance(data, list):
             # If it's a list, process each message
             for msg in data:
+
                 # Update order book if provided
                 if self.order_book is not None and isinstance(msg, dict):
                     self.order_book.update(msg)
