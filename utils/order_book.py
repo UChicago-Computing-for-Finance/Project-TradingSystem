@@ -11,7 +11,7 @@ class OrderBook:
     Maintains configurable depth (default 10 levels) above and below mid price.
     """
     
-    def __init__(self, symbol: str, max_levels: int = 10):
+    def __init__(self, symbol: str, max_levels: int = 10, trim_frequency: int = 100):
         """
         Initialize an order book for a given symbol.
         
@@ -21,6 +21,8 @@ class OrderBook:
         """
         self.symbol = symbol
         self.max_levels = max_levels
+        self.trim_frequency = trim_frequency
+        self.update_count = 0
         
         # Bids: use negated prices as keys for descending order (highest first)
         # Values are sizes at each price level
@@ -103,51 +105,30 @@ class OrderBook:
         if not self.bids or not self.asks:
             return
         
-        # Calculate mid price
-        best_bid_price = self.get_best_bid_price()
-        best_ask_price = self.get_best_ask_price()
+        # Fast path: if we have fewer levels than max, no trimming needed
+        if len(self.bids) <= self.max_levels and len(self.asks) <= self.max_levels:
+            return
+        
+        # Get best prices (already cached in SortedDict)
+        best_bid_price = -self.bids.keys()[0] if self.bids else None
+        best_ask_price = self.asks.keys()[0] if self.asks else None
         
         if best_bid_price is None or best_ask_price is None:
             return
         
-        mid_price = (best_bid_price + best_ask_price) / 2
+        # Trim bids: keep only top max_levels (highest prices)
+        if len(self.bids) > self.max_levels:
+            # SortedDict is already sorted, just keep first max_levels
+            keys_to_remove = list(self.bids.keys())[self.max_levels:]
+            for key in keys_to_remove:
+                del self.bids[key]
         
-        # Get all bids sorted by price (highest first)
-        all_bids = []
-        for negated_price in reversed(self.bids.keys()):
-            actual_price = -negated_price
-            size = self.bids[negated_price]
-            all_bids.append((negated_price, actual_price, size))
-        
-        # Keep only the top max_levels bids (highest prices, closest to mid from below)
-        # Sort by actual price descending, keep top N
-        all_bids.sort(key=lambda x: x[1], reverse=True)
-        bids_to_keep = set()
-        for i, (negated_price, actual_price, size) in enumerate(all_bids[:self.max_levels]):
-            bids_to_keep.add(negated_price)
-        
-        # Remove bids not in the keep set
-        bids_to_remove = [neg_price for neg_price in self.bids.keys() if neg_price not in bids_to_keep]
-        for neg_price in bids_to_remove:
-            del self.bids[neg_price]
-        
-        # Get all asks sorted by price (lowest first)
-        all_asks = []
-        for price in self.asks.keys():
-            size = self.asks[price]
-            all_asks.append((price, size))
-        
-        # Keep only the top max_levels asks (lowest prices, closest to mid from above)
-        # Sort by price ascending, keep top N
-        all_asks.sort(key=lambda x: x[0])
-        asks_to_keep = set()
-        for i, (price, size) in enumerate(all_asks[:self.max_levels]):
-            asks_to_keep.add(price)
-        
-        # Remove asks not in the keep set
-        asks_to_remove = [price for price in self.asks.keys() if price not in asks_to_keep]
-        for price in asks_to_remove:
-            del self.asks[price]
+        # Trim asks: keep only top max_levels (lowest prices)
+        if len(self.asks) > self.max_levels:
+            # SortedDict is already sorted, just keep first max_levels
+            keys_to_remove = list(self.asks.keys())[self.max_levels:]
+            for key in keys_to_remove:
+                del self.asks[key]
     
     def _get_price_increment(self) -> float:
         """
@@ -207,8 +188,10 @@ class OrderBook:
             if 'a' in message and message['a']:
                 self._update_asks(message['a'])
         
-        # Trim to maintain max_levels
-        self._trim_to_max_levels()
+        # Only trim periodically for speed (trimming is expensive)
+        self.update_count += 1
+        if self.update_count % self.trim_frequency == 0:
+            self._trim_to_max_levels()
     
     def get_best_bid_price(self) -> Optional[float]:
         """Get the best (highest) bid price."""
@@ -330,6 +313,7 @@ class OrderBook:
         spread = self.get_spread()
         mid_price = self.get_mid_price()
 
+        print("\n")
         if self.last_update_time:
             print(f"===== Last Update: {self.last_update_time} =======")
         else:
