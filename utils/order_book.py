@@ -11,7 +11,7 @@ class OrderBook:
     Maintains configurable depth (default 10 levels) above and below mid price.
     """
     
-    def __init__(self, symbol: str, max_levels: int = 10, trim_frequency: int = 100):
+    def __init__(self, symbol: str, max_levels: int = 10, trim_frequency: int = 100, full: bool = False):
         """
         Initialize an order book for a given symbol.
         
@@ -23,6 +23,7 @@ class OrderBook:
         self.max_levels = max_levels
         self.trim_frequency = trim_frequency
         self.update_count = 0
+        self.full = full
         
         # Bids: use negated prices as keys for descending order (highest first)
         # Values are sizes at each price level
@@ -248,13 +249,9 @@ class OrderBook:
         if max_levels is None:
             max_levels = len(self.bids)
         
-        # Get all bids, sorted by negated price (which gives ascending actual price)
-        # Since bids are stored with negated prices, the first keys are lowest prices
         result = []
         all_negated_prices = list(self.bids.keys())
         
-        # Take the first max_levels (lowest prices) and iterate in order
-        # to get lowest first
         for negated_price in all_negated_prices[:max_levels]:
             actual_price = -negated_price
             size = self.bids[negated_price]
@@ -272,14 +269,21 @@ class OrderBook:
         if max_levels is None:
             max_levels = len(self.asks)
         
-        # Sort the ask prices highest to lowest, and take the first max_levels
-        sorted_prices = sorted(self.asks.keys(), reverse=True)[:max_levels]
         result = []
-        for price in sorted_prices:
+
+        all_prices = list(self.asks.keys())[:max_levels]  # Get lowest N asks
+    
+        for price in reversed(all_prices):
             size = self.asks[price]
             result.append((price, size))
         
         return result
+
+        # for price in list(self.asks.keys())[:max_levels]:
+        #     size = self.asks[price]
+        #     result.append((price, size))
+        
+        # return result
     
     def __repr__(self) -> str:
         """String representation of the order book."""
@@ -319,15 +323,17 @@ class OrderBook:
         else:
             print(f"================================================")
 
-        # for ask in asks:
-        #     print(f"Ask: {ask}")
+        if self.full:
+            for ask in asks:
+                print(f"Ask: {ask}")
         print(f"Best Ask: {best_ask}, {best_ask_size}")
         print("--------------------------------")
-        print(f"Spread: {spread} ,{mid_price}")
+        print(f"Spread: ${spread} , Mid Price: ${mid_price}")
         print("--------------------------------")
         print(f"Best Bid: {best_bid}, {best_bid_size}")
-        # for bid in bids:
-        #     print(f"Bid: {bid}")
+        if self.full:
+            for bid in bids:
+                print(f"Bid: {bid}")
         print(f"================================================")
         print("\n")
     

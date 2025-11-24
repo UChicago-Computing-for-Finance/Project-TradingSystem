@@ -44,10 +44,10 @@ from utils.order_book import OrderBook
 from utils.market_data_second import MarketDataStreamSecond
 
 # Create order book for BTC/USD
-order_book = OrderBook(symbol="BTC/USD", max_levels=10, trim_frequency=10)
+order_book = OrderBook(symbol="BTC/USD", max_levels=10, trim_frequency=10, full=True)
 
 # Create market data stream and pass the order book
-stream = MarketDataStreamSecond(order_book=order_book, verbose=True)
+stream = MarketDataStreamSecond(order_book=order_book, verbose=True, record_orderbook=True)
 
 # Start streaming (this will update the order book automatically)
 stream.start()
