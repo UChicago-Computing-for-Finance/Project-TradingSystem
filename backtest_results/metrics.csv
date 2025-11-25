@@ -1,0 +1,2 @@
+initial_capital,final_value,total_return,total_return_pct,realized_pnl,sharpe_ratio,max_drawdown,max_drawdown_pct,num_trades,total_commissions
+100000.0,100000.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0
