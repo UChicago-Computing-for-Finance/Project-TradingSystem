@@ -5,9 +5,8 @@ from utils.order_book import OrderBook
 from typing import Optional
 
 class OrderBookImbalanceStrategy(StrategyBase):
-    def __init__(self, order_manager: OrderManager): # start_date, end_date, symbols, cash
+    def __init__(self): # start_date, end_date, symbols, cash
         super().__init__()
-        self.order_manager = order_manager
         self.threshold_buy = 0.55
         self.threshold_sell = 1 - self.threshold_buy
         self.symbol = "BTC/USD"
