@@ -99,3 +99,20 @@ class OrderBookSnapshotReader:
         # Update timestamp if available
         if 'time' in snapshot:
             self.order_book.last_update = snapshot['time']
+
+    def compute_volume(self):
+        """Compute total bid and ask volumes for each orderbook"""
+        self.load_snapshots()
+        
+        for snapshot in self.snapshots:
+            data = snapshot.get('data', {})
+            bid_volume = sum(bid.get('size', 0) for bid in data.get('bids', []))
+            ask_volume = sum(ask.get('size', 0) for ask in data.get('asks', []))
+            timestamp = snapshot.get('time', 'N/A')
+            print(f"Time: {timestamp} | Total Bid Volume: {bid_volume} | Total Ask Volume: {ask_volume}")
+            print(f"proportion of bids: {bid_volume / (bid_volume + ask_volume)} ")
+        
+        return 'ok'
+            
+        
+    
