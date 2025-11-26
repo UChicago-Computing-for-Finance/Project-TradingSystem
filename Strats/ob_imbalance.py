@@ -7,7 +7,7 @@ from typing import Optional
 class OrderBookImbalanceStrategy(StrategyBase):
     def __init__(self): # start_date, end_date, symbols, cash
         super().__init__()
-        self.threshold_buy = 0.55
+        self.threshold_buy = 0.5995
         self.threshold_sell = 1 - self.threshold_buy
         self.symbol = "BTC/USD"
 

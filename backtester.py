@@ -28,18 +28,17 @@ class Backtester:
         orderbook_q = asyncio.Queue()
         signal_q = asyncio.Queue()
         
-        # Create orderbook
-        order_book = OrderBook(symbol="BTC/USD", max_levels=10, trim_frequency=10)
-        
         # Create portfolio tracker
         self.portfolio_tracker = PortfolioTracker(
             initial_cash=self.initial_cash,
             commission_rate=self.commission_rate
         )
-        
         # Create strategy
         strategy = OrderBookImbalanceStrategy()
         strategy.initialize()
+        
+        # Create orderbook
+        order_book = OrderBook(symbol=strategy.symbol, max_levels=10, trim_frequency=10)
         
         # Create components
         data_feed = OrderBookSnapshotReader(

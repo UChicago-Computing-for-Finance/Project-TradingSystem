@@ -21,7 +21,7 @@ async def main():
     order_manager = OrderManager()
     
     # Create strategy
-    strategy = OrderBookImbalanceStrategy()
+    strategy = OrderBookImbalanceStrategy(cash = 100000.0)
     strategy.initialize()
     
     # Create components
