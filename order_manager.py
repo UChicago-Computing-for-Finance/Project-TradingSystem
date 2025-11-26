@@ -58,10 +58,10 @@ class OrderManager:
             print(f"No position found for {symbol}")
             return None
     
-        if position.side == "long" or position.qty > 0:
+        if position.side == "long":
             side = 'sell'
             qty = abs(position.qty)
-        elif position.side == "short" or position.qty < 0:
+        elif position.side == "short":
             side = 'buy'
             qty = abs(position.qty)
         
