@@ -24,21 +24,32 @@ class OrderBookImbalanceStrategy(StrategyBase):
         best_bid = data.get_best_bid_price()
         best_ask = data.get_best_ask_price()
         
-        if best_bid is None or best_ask is None:
-            return None
-        
         # Calculate total bid and ask volumes
         bids = data.get_bids()
         asks = data.get_asks()
         
-        bid_volume = sum(size for _, size in bids)
-        ask_volume = sum(size for _, size in asks)
+        if best_bid is None or best_ask is None:
+            best_bid = max(bid['price'] for bid in bids)
+            best_ask = min(ask['price'] for ask in asks)
         
-        if bid_volume + ask_volume == 0:
+        mid_price = (best_bid + best_ask) / 2
+        
+
+        bid_weighted_volume = sum(
+                                    bid.get('size', 0) * (1 - abs(bid.get('price', 0) - mid_price) / mid_price) # weight by proximity to mid price
+                                    for bid in bids
+                                )
+        ask_weighted_volume = sum(
+                                    ask.get('size', 0) * (1 - abs(ask.get('price', 0) - mid_price) / mid_price) # weight by proximity to mid price
+                                    for ask in asks
+                                )
+    
+        if bid_weighted_volume + ask_weighted_volume == 0:
             return None
         
+
         # Calculate bid proportion
-        bid_proportion = bid_volume / (bid_volume + ask_volume)
+        bid_proportion = bid_weighted_volume / (bid_weighted_volume + ask_weighted_volume)
         
         # Make trading decision
         if bid_proportion > self.threshold_buy:

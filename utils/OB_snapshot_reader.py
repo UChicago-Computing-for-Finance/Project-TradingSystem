@@ -106,11 +106,28 @@ class OrderBookSnapshotReader:
         
         for snapshot in self.snapshots:
             data = snapshot.get('data', {})
+
+
+            best_bid = max(bid['price'] for bid in data.get('bids', []))
+            best_ask = min(ask['price'] for ask in data.get('asks', []))
+            mid_price = (best_bid + best_ask) / 2
+
             bid_volume = sum(bid.get('size', 0) for bid in data.get('bids', []))
             ask_volume = sum(ask.get('size', 0) for ask in data.get('asks', []))
+
+            bid_weighted_volume = sum(
+                                        bid.get('size', 0) * (1 - abs(bid.get('price', 0) - mid_price) / mid_price) # weight by proximity to mid price
+                                        for bid in data.get('bids', [])
+                                    )
+            ask_weighted_volume = sum(
+                                        ask.get('size', 0) * (1 - abs(ask.get('price', 0) - mid_price) / mid_price) # weight by proximity to mid price
+                                        for ask in data.get('asks', [])
+                                    )
+
+
             timestamp = snapshot.get('time', 'N/A')
-            print(f"Time: {timestamp} | Total Bid Volume: {bid_volume} | Total Ask Volume: {ask_volume}")
-            print(f"proportion of bids: {bid_volume / (bid_volume + ask_volume)} ")
+            #print(f"Total Bid Volume: {bid_weighted_volume} | Total Ask Volume: {ask_weighted_volume}")
+            print(f"proportion of bids: {bid_weighted_volume / (bid_weighted_volume + ask_weighted_volume)} ")
         
         return 'ok'
             
