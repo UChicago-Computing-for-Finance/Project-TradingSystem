@@ -28,3 +28,4 @@ class Signal:
     symbol: str
     limit_price: float
     quantity: float = 1.0
+    best_prices: Optional[tuple] = (0.0, 0.0)  # (best_bid, best_ask)

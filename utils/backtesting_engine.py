@@ -47,7 +47,9 @@ class BacktestingEngine:
                         symbol=signal.symbol,
                         action=signal.action,
                         quantity=signal.quantity,
-                        price=signal.limit_price
+                        price=signal.limit_price,
+                        best_bid=signal.best_prices[0],
+                        best_ask=signal.best_prices[1]                        
                     )
                 
                 # Record portfolio snapshot after each trade

@@ -45,7 +45,7 @@ class Backtester:
             filepath=self.data_file,
             order_book=order_book,
             out_q=orderbook_q,
-            delay=self.delay,
+            delay=0,
             verbose=True
         )
         
@@ -105,6 +105,7 @@ class Backtester:
             # Try to plot (will fail if matplotlib not installed)
             try:
                 self.portfolio_tracker.plot_portfolio_value("./backtest_results/portfolio_chart.png")
+                self.portfolio_tracker.plot_prices("./backtest_results/price_chart.png")
             except Exception as e:
                 print(f"Could not generate plots (install matplotlib): {e}")
 

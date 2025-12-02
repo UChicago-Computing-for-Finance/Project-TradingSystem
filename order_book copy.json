@@ -1,6 +1,59 @@
 [
   {
     "asset": "BTC/USD",
+    "time": "2025-11-24T23:30:44.456993134Z",
+    "data": {
+      "bids": [
+        {
+          "price": 98,
+          "size": 1
+        },
+        {
+          "price": 99,
+          "size": 1
+        }
+      ],
+      "asks": [
+        {
+          "price": 101,
+          "size": 1
+        },
+        {
+          "price": 102,
+          "size": 1
+        }
+      ]
+    }
+  },
+  {
+    "asset": "BTC/USD",
+    "time": "2025-11-24T23:30:53.590773926Z",
+    "data": {
+      "bids": [
+        {
+          "price": 98,
+          "size": 1
+        },
+        {
+          "price": 99,
+          "size": 1
+        }
+      ],
+      "asks": [
+        {
+          "price": 101,
+          "size": 1
+        },
+        {
+          "price": 102,
+          "size": 1
+        }
+      ]
+    }
+  }
+  ,
+  {
+    "asset": "BTC/USD",
     "time": "2025-11-24T23:30:54.225703078Z",
     "data": {
       "bids": [
