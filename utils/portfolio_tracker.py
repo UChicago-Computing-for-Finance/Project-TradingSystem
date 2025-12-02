@@ -77,13 +77,15 @@ class PortfolioTracker:
         self.trades: List[Trade] = []
         self.portfolio_snapshots: List[Dict] = []
         self.position_snapshots: List[PositionSnapshot] = []
-        
+        self.best_bid_ask: Dict[str, list[tuple[float, float]]] = {}
+
         # Performance tracking
         self.realized_pnl = 0.0
         self.total_commissions = 0.0
         
     def record_trade(self, timestamp, symbol: str, action: str, 
-                     quantity: float, price: float) -> Trade:
+                     quantity: float, price: float, 
+                     best_bid: float, best_ask: float) -> Trade:
         """
         Record a trade execution and update positions
         
@@ -105,12 +107,13 @@ class PortfolioTracker:
         elif action == "close":
             trade_created = self.close_position(symbol, price)
 
+        self.best_bid_ask.setdefault(symbol, []).append((best_bid, best_ask))
         if trade_created:
             trade = Trade(timestamp, symbol, action, quantity, price, commission)
             self.trades.append(trade)
             self.total_commissions += commission
-    
-            return trade
+            
+
     
     def _execute_buy(self, symbol: str, quantity: float, price: float, commission: float):
         """Execute a buy order"""
@@ -415,3 +418,32 @@ class PortfolioTracker:
         print(f"Number of Trades:   {metrics.get('num_trades', 0)}")
         print(f"Total Commissions:  ${metrics.get('total_commissions', 0):.2f}")
         print("="*60 + "\n")
+
+
+    def plot_prices(self, save_path: Optional[str] = None):
+        """plot bid and ask prices over time"""
+        if not self.best_bid_ask:
+            print("No price data to plot")
+            return
+        
+        for symbol, prices in self.best_bid_ask.items():
+            bids, asks = zip(*prices)
+            timestamps = range(len(bids))
+            
+            plt.figure(figsize=(12, 6))
+            plt.plot(timestamps, bids, label='Best Bid', color='green')
+            plt.plot(timestamps, asks, label='Best Ask', color='red')
+            plt.fill_between(timestamps, bids, asks, color='gray', alpha=0.3, label='Spread')
+            plt.title(f'Best Bid and Ask Prices for {symbol}')
+            plt.xlabel('Time')
+            plt.ylabel('Price')
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+            
+            if save_path:
+                # Replace / in symbol with _ to avoid path issues
+                safe_symbol = symbol.replace('/', '_')
+                plt.savefig(f"{save_path}_{safe_symbol}_prices.png", dpi=300, bbox_inches='tight')
+                print(f"Price plot for {symbol} saved to {save_path}_{safe_symbol}_prices.png")
+            
+            plt.show()

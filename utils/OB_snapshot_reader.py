@@ -12,7 +12,7 @@ class OrderBookSnapshotReader:
     
     def __init__(self, filepath: str, order_book: OrderBook, 
                  out_q: Optional[asyncio.Queue] = None,
-                 delay: float = 1.0, verbose: bool = False):
+                 delay: float = 0, verbose: bool = False):
         """
         Initialize the snapshot reader
         
