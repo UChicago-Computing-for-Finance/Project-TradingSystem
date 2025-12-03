@@ -206,7 +206,7 @@ class MarketDataStreamSecond:
                     if self.verbose:
                         print(f"Received snapshot #{self.snapshot_count} at {msg.get('t', 'N/A')}", flush=True)
 
-                        print(f"msg: {msg}", flush=True)
+                        # print(f"msg: {msg}", flush=True)
                     
                     if self.order_book is not None:
 
