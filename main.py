@@ -15,7 +15,7 @@ async def main():
     signal_q = asyncio.Queue()
     
     # Create orderbook
-    order_book = OrderBook(symbol="BTC/USD", max_levels=10, trim_frequency=10)
+    order_book = OrderBook(symbol="NVDA", max_levels=10, trim_frequency=10)
     
     # Create order manager
     order_manager = OrderManager()
@@ -27,7 +27,7 @@ async def main():
     # Create components
     data_feed = MarketDataStreamSecond(
         order_book=order_book,
-        symbol="BTC/USD",
+        symbol="NVDA",
         verbose=True,
         out_q=orderbook_q
     )

@@ -18,7 +18,7 @@ class MarketDataStreamSecond:
     """
     
     def __init__(self, order_book: Optional[OrderBook] = None, 
-                symbol: str = "BTC/USD", 
+                symbol: str = "NVDA", 
                 verbose: bool = False,
                 record_orderbook: bool = False,
                 out_q: Optional[asyncio.Queue] = None):

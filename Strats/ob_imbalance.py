@@ -11,7 +11,7 @@ class OrderBookImbalanceStrategy(StrategyBase):
         self.threshold_buy = 0.55
         self.threshold_sell = 1 - self.threshold_buy
         self.threshold_bid_proportion_change = 0.02 #in percentage
-        self.symbol = "BTC/USD"
+        self.symbol = "NVDA"
         self.midprice_window = deque(maxlen=10)
         self.bid_proportion_window = deque(maxlen=10)
 
@@ -68,7 +68,7 @@ class OrderBookImbalanceStrategy(StrategyBase):
                 action="buy",
                 symbol=self.symbol,
                 limit_price=best_ask,  # Buy at ask price
-                quantity=0.005, # getaccountvalue/getmidprice * 0.1
+                quantity=3, # getaccountvalue/getmidprice * 0.1
                 best_prices=(best_bid, best_ask)
             )
         #elif bid_proportion < self.threshold_sell:
@@ -79,7 +79,7 @@ class OrderBookImbalanceStrategy(StrategyBase):
                 action="sell",
                 symbol=self.symbol,
                 limit_price=best_bid,  # Sell at bid price
-                quantity=0.005,
+                quantity=3,
                 best_prices=(best_bid, best_ask)
             )
         else:
